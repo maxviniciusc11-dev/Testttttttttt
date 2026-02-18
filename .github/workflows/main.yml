@@ -1,0 +1,54 @@
+name: Build SAMP Mobile APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do Código
+        uses: actions/checkout@v4
+
+      - name: Configurar JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          # Removi o 'cache: gradle' para evitar o erro de arquivo não encontrado
+          
+      - name: Configurar Android NDK
+        uses: nttld/setup-ndk@v1
+        with:
+          ndk-version: r21e
+
+      - name: Verificar arquivos (Debug)
+        run: ls -R # Isso vai listar os arquivos no log para vermos onde está o build.gradle
+
+      - name: Garantir Permissão do Gradle
+        run: |
+          if [ -f "gradlew" ]; then
+            chmod +x gradlew
+          else
+            echo "Gradlew não encontrado na raiz, tentando encontrar em subpastas..."
+            find . -name gradlew -exec chmod +x {} +
+          fi
+
+      - name: Build com Gradle
+        run: |
+          if [ -f "gradlew" ]; then
+            ./gradlew assembleDebug
+          else
+            # Se o gradlew estiver em uma pasta (ex: /app), ele tenta rodar lá
+            GRADLE_PATH=$(find . -name gradlew | head -n 1)
+            $GRADLE_PATH assembleDebug
+          fi
+
+      - name: Upload do APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: samp-mobile-debug
+          path: "**/*.apk"
